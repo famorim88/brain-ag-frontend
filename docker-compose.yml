@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile 
+    ports:
+      - "3000:80"
+    env_file:
+      - ./.env
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      REACT_APP_API_URL: "${REACT_APP_API_URL}"
+    restart: unless-stopped
+    command: npm start
