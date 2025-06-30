@@ -98,6 +98,12 @@ const RemoveCultureButton = styled.button`
     background-color: #e0a800;
   }
 `;
+//Tem que ver oq componetizar para reuso
+const CardTitle = styled.h2`
+  color: #333;
+  margin-bottom: 10px;
+  font-size: 1.2em;
+`;
 
 // Helper para validar CPF/CNPJ (um placeholder simples)
 const validateCpfCnpj = (value: string): boolean => {
