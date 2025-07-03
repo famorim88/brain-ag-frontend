@@ -1,44 +1,27 @@
-// frontend/src/contexts/ProducerContext.tsx
-import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import api from '../services/api';
 import { Producer, ProducerCreate, ProducerUpdate, CultureCreate } from '../types';
 
-// Definir a interface para o contexto (o que ele vai expor)
 interface ProducerContextType {
   producers: Producer[];
   loading: boolean;
   error: string | null;
   fetchProducers: () => Promise<void>;
-  createProducer: (producer: ProducerCreate) => Promise<Producer | undefined>;
   getProducerById: (id: number) => Producer | undefined;
-  updateProducer: (id: number, updates: ProducerUpdate) => Promise<Producer | undefined>;
+  createProducer: (producer: ProducerCreate) => Promise<Producer | null>;
+  updateProducer: (id: number, producer: ProducerUpdate) => Promise<Producer | null>;
   deleteProducer: (id: number) => Promise<boolean>;
   addCultureToProducer: (producerId: number, culture: CultureCreate) => Promise<CultureCreate | undefined>;
+  deleteCultureFromProducer: (producerId: number, cultureId: number) => Promise<boolean>; // NEW FUNCTION
 }
 
-// Criar o contexto
 const ProducerContext = createContext<ProducerContextType | undefined>(undefined);
 
-// Hook personalizado para usar o contexto facilmente
-export const useProducers = () => {
-  const context = useContext(ProducerContext);
-  if (context === undefined) {
-    throw new Error('useProducers must be used within a ProducerProvider');
-  }
-  return context;
-};
-
-// Componente Provider que vai envolver sua aplicação
-interface ProducerProviderProps {
-  children: ReactNode;
-}
-
-export const ProducerProvider: React.FC<ProducerProviderProps> = ({ children }) => {
+export const ProducerProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [producers, setProducers] = useState<Producer[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Função para buscar todos os produtores
   const fetchProducers = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -47,59 +30,54 @@ export const ProducerProvider: React.FC<ProducerProviderProps> = ({ children }) 
       setProducers(response.data);
     } catch (err: any) {
       console.error('Erro ao buscar produtores:', err);
-      setError(err.response?.data?.detail || 'Falha ao buscar produtores.');
+      setError(err.response?.data?.detail || 'Falha ao carregar produtores.');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Função para criar um novo produtor
+  const getProducerById = useCallback((id: number) => {
+    return producers.find(p => p.id === id);
+  }, [producers]);
+
   const createProducer = useCallback(async (producer: ProducerCreate) => {
     setLoading(true);
     setError(null);
     try {
       const response = await api.post<Producer>('/producers/', producer);
-      setProducers(prev => [...prev, response.data]); // Adiciona o novo produtor à lista local
+      setProducers(prev => [...prev, response.data]);
       return response.data;
     } catch (err: any) {
       console.error('Erro ao criar produtor:', err);
-      setError(err.response?.data?.detail || 'Falha ao criar produtor.');
-      return undefined;
+      setError(err.response?.data?.detail || 'Falha ao cadastrar produtor.');
+      return null;
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Função para obter um produtor por ID (do estado local)
-  const getProducerById = useCallback((id: number) => {
-    return producers.find(p => p.id === id);
-  }, [producers]);
-
-
-  // Função para atualizar um produtor
-  const updateProducer = useCallback(async (id: number, updates: ProducerUpdate) => {
+  const updateProducer = useCallback(async (id: number, producer: ProducerUpdate) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.put<Producer>(`/producers/${id}`, updates);
-      setProducers(prev => prev.map(p => (p.id === id ? response.data : p))); // Atualiza na lista local
+      const response = await api.put<Producer>(`/producers/${id}`, producer);
+      setProducers(prev => prev.map(p => (p.id === id ? response.data : p)));
       return response.data;
     } catch (err: any) {
       console.error('Erro ao atualizar produtor:', err);
       setError(err.response?.data?.detail || 'Falha ao atualizar produtor.');
-      return undefined;
+      return null;
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Função para deletar um produtor
   const deleteProducer = useCallback(async (id: number) => {
     setLoading(true);
     setError(null);
     try {
       await api.delete(`/producers/${id}`);
-      setProducers(prev => prev.filter(p => p.id !== id)); // Remove da lista local
+      setProducers(prev => prev.filter(p => p.id !== id));
       return true;
     } catch (err: any) {
       console.error('Erro ao deletar produtor:', err);
@@ -110,8 +88,7 @@ export const ProducerProvider: React.FC<ProducerProviderProps> = ({ children }) 
     }
   }, []);
 
-  // Função para adicionar cultura a um produtor
-  const addCultureToProducer = useCallback(async (producerId: number, culture: CultureCreate) => {
+    const addCultureToProducer = useCallback(async (producerId: number, culture: CultureCreate) => {
     setLoading(true);
     setError(null);
     try {
@@ -130,17 +107,43 @@ export const ProducerProvider: React.FC<ProducerProviderProps> = ({ children }) 
     }
   }, []);
 
+  const deleteCultureFromProducer = useCallback(async (producerId: number, cultureId: number) => {
+    setLoading(true);
+    setError(null);
+    console.log('delete')
+    try {
+      await api.delete(`/producers/${producerId}/cultures/${cultureId}`);
+      // Remove a cultura do estado local após a deleção bem-sucedida
+      setProducers(prevProducers => prevProducers.map(p => {
+        if (p.id === producerId) {
+          return {
+            ...p,
+            cultures: p.cultures.filter(c => c.id !== cultureId) // Filtra a cultura deletada
+          };
+        }
+        return p;
+      }));
+      return true;
+    } catch (err: any) {
+      console.error('Erro ao deletar cultura:', err);
+      setError(err.response?.data?.detail || 'Falha ao deletar cultura.');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const contextValue = {
     producers,
     loading,
     error,
     fetchProducers,
-    createProducer,
     getProducerById,
+    createProducer,
     updateProducer,
     deleteProducer,
     addCultureToProducer,
+    deleteCultureFromProducer,
   };
 
   return (
@@ -148,4 +151,12 @@ export const ProducerProvider: React.FC<ProducerProviderProps> = ({ children }) 
       {children}
     </ProducerContext.Provider>
   );
+};
+
+export const useProducers = () => {
+  const context = useContext(ProducerContext);
+  if (!context) {
+    throw new Error('useProducers must be used within a ProducerProvider');
+  }
+  return context;
 };

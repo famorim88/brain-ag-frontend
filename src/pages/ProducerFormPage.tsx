@@ -116,7 +116,7 @@ const validateCpfCnpj = (value: string): boolean => {
 const ProducerFormPage: React.FC = () => {
   const { id } = useParams<{ id?: string }>(); // 'id' pode ser undefined para novo cadastro
   const navigate = useNavigate();
-  const { producers, loading, error, createProducer, updateProducer, getProducerById, addCultureToProducer } = useProducers();
+  const { producers, loading, error, createProducer, updateProducer, getProducerById, addCultureToProducer,deleteCultureFromProducer } = useProducers();
 
   const isEditMode = !!id; // True se houver um ID na URL
 
@@ -144,6 +144,7 @@ const ProducerFormPage: React.FC = () => {
       const producerToEdit = getProducerById(producerIdNum);
       if (producerToEdit) {
         setFormData({
+          id:producerIdNum,
           cpf_cnpj: producerToEdit.cpf_cnpj,
           name: producerToEdit.name,
           farm_name: producerToEdit.farm_name,
@@ -152,7 +153,7 @@ const ProducerFormPage: React.FC = () => {
           total_area: producerToEdit.total_area,
           agricultural_area: producerToEdit.agricultural_area,
           vegetation_area: producerToEdit.vegetation_area,
-          cultures: producerToEdit.cultures.map(c => ({ crop_year: c.crop_year, name: c.name })), // Mapeia para CultureCreate
+          cultures: producerToEdit.cultures.map(c => ({ id:c.id,crop_year: c.crop_year, name: c.name })), // Mapeia para CultureCreate
         });
       } else if (!loading && !error) { // Se não encontrou e já carregou
           // Navegar de volta ou mostrar erro, produtor não encontrado no estado local
@@ -213,11 +214,14 @@ const ProducerFormPage: React.FC = () => {
     }
   };
 
-  const handleRemoveCulture = (indexToRemove: number) => {
+  const handleRemoveCulture = async (indexToRemove: number,producer_id?:number,culture_id?:number,form?:any,culture?:any) => {
     setFormData(prev => ({
       ...prev,
       cultures: (prev.cultures || []).filter((_, index) => index !== indexToRemove)
     }));
+    console.log(form,culture)
+    if(producer_id && culture_id)
+      await deleteCultureFromProducer(producer_id,culture_id)
   };
 
   const validateForm = () => {
@@ -429,7 +433,7 @@ const ProducerFormPage: React.FC = () => {
               {formData.cultures.map((culture, index) => (
                 <CultureItem key={index}>
                   <span>{culture.crop_year} - {culture.name}</span>
-                  <RemoveCultureButton type="button" onClick={() => handleRemoveCulture(index)}>Remover</RemoveCultureButton>
+                  <RemoveCultureButton type="button" onClick={() => handleRemoveCulture(index,formData.id,culture.id,formData,culture)}>Remover</RemoveCultureButton>
                 </CultureItem>
               ))}
             </div>

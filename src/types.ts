@@ -6,6 +6,7 @@ export interface Culture {
 }
 
 export interface CultureCreate {
+    id?:number,
     crop_year: string;
     name: string;
 }
@@ -24,6 +25,7 @@ export interface Producer {
 }
 
 export interface ProducerCreate {
+    id?:number,
     cpf_cnpj: string;
     name: string;
     farm_name: string;
@@ -36,6 +38,7 @@ export interface ProducerCreate {
 }
 
 export interface ProducerUpdate {
+    id?:number,
     cpf_cnpj: string;
     name?: string;
     farm_name?: string;
